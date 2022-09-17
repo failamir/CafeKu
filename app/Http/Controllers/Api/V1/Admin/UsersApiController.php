@@ -30,6 +30,53 @@ class UsersApiController extends Controller
             ->setStatusCode(Response::HTTP_CREATED);
     }
 
+    public function register(Request $request)
+    {
+        // ECHO 0; die;
+        $request->validate([
+            'name' => 'required',
+            'email' => 'required|email',
+            'password' => 'required|min:6'
+        ]);
+
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => bcrypt($request->password),
+        ]);
+
+        $user->roles()->attach(2); // Simple user role
+
+        return response()->json($user);
+    }
+
+    public function login(Request $request)
+{
+    $request->validate([
+        'email' => 'email|required',
+        'password' => 'required'
+    ]);
+
+    $credentials = request(['email', 'password']);
+    if (!auth()->attempt($credentials)) {
+        return response()->json([
+            'message' => 'The given data was invalid.',
+            'errors' => [
+                'password' => [
+                    'Invalid credentials'
+                ],
+            ]
+        ], 422);
+    }
+
+    $user = User::where('email', $request->email)->first();
+    $authToken = $user->createToken('auth-token')->plainTextToken;
+
+    return response()->json([
+        'access_token' => $authToken,
+    ]);
+}
+
     public function show(User $user)
     {
         abort_if(Gate::denies('user_show'), Response::HTTP_FORBIDDEN, '403 Forbidden');
